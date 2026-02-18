@@ -1,0 +1,73 @@
+name: UAE Investor Research Agent
+
+on:
+  # Run every 6 hours
+  schedule:
+    - cron: '0 */6 * * *'
+  
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      target_count:
+        description: 'Number of investors to find'
+        required: false
+        default: '15'
+
+jobs:
+  research-investors:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        pip install anthropic gspread oauth2client
+    
+    - name: Run investor research
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      run: |
+        echo "🔍 Starting investor research..."
+        python uae_investor_agent.py
+        
+        if [ -f "uae_investors_research.csv" ]; then
+          echo "✅ Research complete!"
+          echo "INVESTOR_COUNT=$(tail -n +2 uae_investors_research.csv | wc -l)" >> $GITHUB_ENV
+        else
+          echo "❌ Research failed - no CSV generated"
+          exit 1
+        fi
+    
+    - name: Archive results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: investor-data-${{ github.run_number }}
+        path: uae_investors_research.csv
+        retention-days: 90
+    
+    - name: Commit updated data
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        mkdir -p historical_data
+        cp uae_investors_research.csv "historical_data/investors_$(date +%Y%m%d_%H%M%S).csv"
+        git add uae_investors_research.csv historical_data/
+        
+        git diff --quiet && git diff --staged --quiet || \
+          git commit -m "🤖 Auto-update: Found investors [$(date +'%Y-%m-%d %H:%M UTC')]"
+    
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
