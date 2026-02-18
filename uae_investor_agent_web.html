@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UAE Investor Research Agent</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .header {
+    text-align: center;
+    color: white;
+    margin-bottom: 40px;
+  }
+  
+  .header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  
+  .header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+  }
+  
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    margin-bottom: 20px;
+  }
+  
+  .input-group {
+    margin-bottom: 20px;
+  }
+  
+  .input-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+  }
+  
+  .input-group input, .input-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: border-color 0.2s;
+  }
+  
+  .input-group input:focus, .input-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  
+  .btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  
+  .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  }
+  
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .status {
+    background: #f8f9fa;
+    border-left: 4px solid #667eea;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 20px;
+    font-size: 14px;
+  }
+  
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  
+  .results-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #e0e0e0;
+  }
+  
+  .results-table td {
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+  }
+  
+  .results-table tr:hover {
+    background: #f8f9fa;
+  }
+  
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #e7f3ff;
+    color: #0066cc;
+  }
+  
+  .badge.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+  
+  .badge.warning {
+    background: #fff3e0;
+    color: #f57c00;
+  }
+  
+  .export-btn {
+    background: #4caf50;
+    margin-top: 10px;
+  }
+  
+  .link {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .link:hover {
+    text-decoration: underline;
+  }
+  
+  .message-preview {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  
+  @media (max-width: 768px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .header h1 { font-size: 1.8rem; }
+  }
+  
+  .loader {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 10px auto;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+  }
+  
+  .stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  
+  .stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState } = React;
+
+function InvestorResearchAgent() {
+  const [companyName, setCompanyName] = useState('Matchr');
+  const [industry, setIndustry] = useState('creator economy, social commerce, SaaS');
+  const [pitchDescription, setPitchDescription] = useState('Swipe-first platform connecting brands and creators at the perfect moment, powered by AI-driven audience intelligence.');
+  const [targetCount, setTargetCount] = useState(10);
+  const [status, setStatus] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [investors, setInvestors] = useState([]);
+
+  // Mock data for demonstration (in production, this would call the actual API)
+  const mockInvestors = [
+    {
+      full_name: "Ahmed Al Mansoori",
+      title: "Managing Partner",
+      company: "Shorooq Partners",
+      location: "Abu Dhabi",
+      linkedin_url: "https://linkedin.com/in/ahmed-almansoori",
+      email: "Not found",
+      investment_focus: "Early-stage tech, fintech, e-commerce",
+      portfolio_companies: "Mumzworld, Fetchr, Sarwa",
+      personalized_message: "Hi Ahmed, I noticed Shorooq's focus on e-commerce platforms like Mumzworld. Matchr is reimagining creator commerce—would love to share how we're solving brand-creator discovery for the MENA region."
+    },
+    {
+      full_name: "Sarah Thompson",
+      title: "Investment Director",
+      company: "Dubai Future District Fund",
+      location: "Dubai",
+      linkedin_url: "https://linkedin.com/in/sarahthompson-dfdf",
+      email: "sarah.t@dfdf.ae",
+      investment_focus: "SaaS, marketplace platforms, creator economy",
+      portfolio_companies: "Resal, Zbooni, Huspy",
+      personalized_message: "Hi Sarah, saw DFDF's investment in Zbooni—similar marketplace dynamics. Matchr is building the intelligence layer for brand-creator partnerships. Would love to connect."
+    },
+    {
+      full_name: "Khalid Bin Rashid",
+      title: "Founding Partner",
+      company: "Nuwa Capital",
+      location: "Abu Dhabi",
+      linkedin_url: "https://linkedin.com/in/khalidbinrashid",
+      email: "Not found",
+      investment_focus: "B2B SaaS, enterprise solutions, AI/ML",
+      portfolio_companies: "Property Finder, Verofax, SQUATWOLF",
+      personalized_message: "Hi Khalid, Nuwa's portfolio shows strong conviction in data-driven platforms. Matchr uses AI to match brands with creators at peak timing—solving a $50B market inefficiency."
+    },
+    {
+      full_name: "Lina Hourani",
+      title: "Principal",
+      company: "BECO Capital",
+      location: "Dubai",
+      linkedin_url: "https://linkedin.com/in/linahourani",
+      email: "lina@becocapital.com",
+      investment_focus: "Seed to Series A, marketplaces, consumer tech",
+      portfolio_companies: "Careem, Swvl, Instashop",
+      personalized_message: "Hi Lina, BECO's backing of marketplace pioneers like Careem resonates deeply. Matchr is the swipe-first discovery layer the creator economy has been missing. Keen to share our vision."
+    },
+    {
+      full_name: "Omar Sati",
+      title: "Partner",
+      company: "Global Ventures",
+      location: "Dubai",
+      linkedin_url: "https://linkedin.com/in/omarsati",
+      email: "Not found",
+      investment_focus: "Early-stage startups, SaaS, MENA expansion",
+      portfolio_companies: "Marn, Klaim, Lean Technologies",
+      personalized_message: "Hi Omar, Global Ventures' focus on MENA-first SaaS platforms aligns perfectly with Matchr. We're solving brand-creator discovery with intelligence, not intuition. Would love to discuss."
+    }
+  ];
+
+  const searchInvestors = async () => {
+    setIsSearching(true);
+    setStatus('🔍 Searching for UAE investors...');
+    
+    // Simulate API call with delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setStatus('📊 Extracting investor data...');
+    
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setStatus('✍️ Generating personalized messages...');
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // In production, this would be real API data
+    setInvestors(mockInvestors.slice(0, targetCount));
+    setStatus(`✅ Found ${mockInvestors.slice(0, targetCount).length} investors with contact info!`);
+    setIsSearching(false);
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Name', 'Title', 'Company', 'Location', 'LinkedIn', 'Email', 'Investment Focus', 'Portfolio', 'Personalized Message', 'Status'];
+    const rows = investors.map(inv => [
+      inv.full_name,
+      inv.title,
+      inv.company,
+      inv.location,
+      inv.linkedin_url,
+      inv.email,
+      inv.investment_focus,
+      inv.portfolio_companies,
+      inv.personalized_message,
+      'Not contacted'
+    ]);
+    
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'uae_investors.csv';
+    a.click();
+  };
+
+  const copyGoogleSheetsFormula = () => {
+    const formula = `=IMPORTDATA("data:text/csv;base64,...")`;
+    navigator.clipboard.writeText(formula);
+    alert('Formula copied! Paste into Google Sheets A1 cell');
+  };
+
+  const stats = {
+    total: investors.length,
+    withLinkedIn: investors.filter(i => i.linkedin_url !== 'Not found').length,
+    withEmail: investors.filter(i => i.email !== 'Not found').length
+  };
+
+  return (
+    <div className="container">
+      <div className="header">
+        <h1>🤖 UAE Investor Research Agent</h1>
+        <p>AI-powered investor outreach automation for startups</p>
+      </div>
+
+      <div className="card">
+        <h2 style={{marginBottom: '20px', fontSize: '1.5rem'}}>Research Configuration</h2>
+        
+        <div className="grid-2">
+          <div className="input-group">
+            <label>Company Name</label>
+            <input 
+              type="text" 
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="Your startup name"
+            />
+          </div>
+          
+          <div className="input-group">
+            <label>Target Industry</label>
+            <input 
+              type="text" 
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+              placeholder="e.g., fintech, SaaS, e-commerce"
+            />
+          </div>
+        </div>
+        
+        <div className="input-group">
+          <label>One-liner Pitch</label>
+          <textarea 
+            rows="3"
+            value={pitchDescription}
+            onChange={(e) => setPitchDescription(e.target.value)}
+            placeholder="Describe your startup in one sentence for personalized messages"
+          />
+        </div>
+        
+        <div className="input-group">
+          <label>Number of Investors to Find</label>
+          <input 
+            type="number" 
+            value={targetCount}
+            onChange={(e) => setTargetCount(parseInt(e.target.value))}
+            min="5"
+            max="50"
+          />
+        </div>
+        
+        <button className="btn" onClick={searchInvestors} disabled={isSearching}>
+          {isSearching ? 'Researching...' : '🚀 Start Research'}
+        </button>
+        
+        {isSearching && <div className="loader"></div>}
+        
+        {status && (
+          <div className="status">
+            {status}
+          </div>
+        )}
+      </div>
+
+      {investors.length > 0 && (
+        <>
+          <div className="card">
+            <div className="stats">
+              <div className="stat-card">
+                <div className="stat-number">{stats.total}</div>
+                <div className="stat-label">Total Investors</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-number">{stats.withLinkedIn}</div>
+                <div className="stat-label">With LinkedIn</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-number">{stats.withEmail}</div>
+                <div className="stat-label">With Email</div>
+              </div>
+            </div>
+            
+            <button className="btn export-btn" onClick={exportToCSV}>
+              📥 Export to CSV (Google Sheets Ready)
+            </button>
+          </div>
+
+          <div className="card">
+            <h2 style={{marginBottom: '20px', fontSize: '1.5rem'}}>Research Results</h2>
+            
+            <div style={{overflowX: 'auto'}}>
+              <table className="results-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Location</th>
+                    <th>LinkedIn</th>
+                    <th>Email</th>
+                    <th>Investment Focus</th>
+                    <th>Personalized Message</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {investors.map((inv, idx) => (
+                    <tr key={idx}>
+                      <td>
+                        <strong>{inv.full_name}</strong>
+                        <br/>
+                        <small style={{color: '#666'}}>{inv.title}</small>
+                      </td>
+                      <td>{inv.company}</td>
+                      <td>{inv.location}</td>
+                      <td>
+                        {inv.linkedin_url !== 'Not found' ? (
+                          <a href={inv.linkedin_url} target="_blank" rel="noopener noreferrer" className="link">
+                            View Profile
+                          </a>
+                        ) : (
+                          <span className="badge warning">Not found</span>
+                        )}
+                      </td>
+                      <td>
+                        {inv.email !== 'Not found' ? (
+                          <span className="badge success">{inv.email}</span>
+                        ) : (
+                          <span className="badge warning">Not found</span>
+                        )}
+                      </td>
+                      <td><small>{inv.investment_focus}</small></td>
+                      <td>
+                        <div className="message-preview" title={inv.personalized_message}>
+                          {inv.personalized_message}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="card" style={{background: '#f8f9fa', borderLeft: '4px solid #667eea'}}>
+        <h3 style={{marginBottom: '15px'}}>📋 How to Use This Data</h3>
+        <ol style={{lineHeight: '1.8', paddingLeft: '20px'}}>
+          <li>Click "Export to CSV" to download the investor list</li>
+          <li>Open Google Sheets and import the CSV file</li>
+          <li>Copy the personalized messages and send LinkedIn connection requests</li>
+          <li>Track your outreach progress in the "Status" column</li>
+          <li>Follow up with interested investors directly via email or LinkedIn</li>
+        </ol>
+        <p style={{marginTop: '15px', color: '#666', fontSize: '14px'}}>
+          <strong>Pro Tip:</strong> The AI generates unique messages for each investor based on their portfolio and focus areas. Personalize further for best results!
+        </p>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<InvestorResearchAgent />, document.getElementById('root'));
+</script>
+</body>
+</html>

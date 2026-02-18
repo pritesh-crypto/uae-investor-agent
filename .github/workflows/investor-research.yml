@@ -1,0 +1,142 @@
+name: UAE Investor Research Agent
+
+on:
+  # Run every 6 hours
+  schedule:
+    - cron: '0 */6 * * *'
+  
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      target_count:
+        description: 'Number of investors to find'
+        required: false
+        default: '15'
+
+jobs:
+  research-investors:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        pip install anthropic gspread oauth2client
+    
+    - name: Run investor research
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      run: |
+        echo "🔍 Starting investor research..."
+        python uae_investor_agent.py
+        
+        if [ -f "uae_investors_research.csv" ]; then
+          echo "✅ Research complete!"
+          echo "INVESTOR_COUNT=$(tail -n +2 uae_investors_research.csv | wc -l)" >> $GITHUB_ENV
+        else
+          echo "❌ Research failed - no CSV generated"
+          exit 1
+        fi
+    
+    - name: Update Google Sheets
+      if: success()
+      env:
+        GSHEET_CREDENTIALS: ${{ secrets.GSHEET_CREDENTIALS }}
+      run: |
+        echo "📊 Updating Google Sheets..."
+        python update_google_sheet.py
+    
+    - name: Archive results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: investor-data-${{ github.run_number }}
+        path: |
+          uae_investors_research.csv
+          research_log.txt
+        retention-days: 90
+    
+    - name: Commit updated data
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        # Create data directory if it doesn't exist
+        mkdir -p historical_data
+        
+        # Copy current CSV to historical archive
+        cp uae_investors_research.csv "historical_data/investors_$(date +%Y%m%d_%H%M%S).csv"
+        
+        # Add changes
+        git add uae_investors_research.csv historical_data/
+        
+        # Commit if there are changes
+        git diff --quiet && git diff --staged --quiet || \
+          git commit -m "🤖 Auto-update: Found ${{ env.INVESTOR_COUNT }} investors [$(date +'%Y-%m-%d %H:%M UTC')]"
+    
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
+    
+    - name: Send Slack notification
+      if: success() && secrets.SLACK_WEBHOOK_URL != ''
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        payload: |
+          {
+            "text": "🎯 UAE Investor Research Complete",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Investor Research Update*\n✅ Found ${{ env.INVESTOR_COUNT }} investors\n📅 $(date +'%Y-%m-%d %H:%M UTC')"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View on GitHub"
+                    },
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    
+    - name: Create summary
+      if: always()
+      run: |
+        echo "## 🤖 Investor Research Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Run ID:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Timestamp:** $(date +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "**Investors Found:** ${{ env.INVESTOR_COUNT }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "uae_investors_research.csv" ]; then
+          echo "### Top 5 Investors" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Name | Company | Location |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|---------|----------|" >> $GITHUB_STEP_SUMMARY
+          tail -n +2 uae_investors_research.csv | head -5 | while IFS=, read -r name title company location rest; do
+            echo "| $name | $company | $location |" >> $GITHUB_STEP_SUMMARY
+          done
+        fi
