@@ -45,15 +45,6 @@ jobs:
           echo "❌ Research failed - no CSV generated"
           exit 1
         fi
-    
-    - name: Archive results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: investor-data-${{ github.run_number }}
-        path: uae_investors_research.csv
-        retention-days: 90
-    
     - name: Commit updated data
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
